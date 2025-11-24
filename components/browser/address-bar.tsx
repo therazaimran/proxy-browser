@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, KeyboardEvent } from "react";
+import { useState, KeyboardEvent, useEffect } from "react";
 import { useBrowserState } from "@/hooks/use-browser-state";
 import { ArrowLeft, ArrowRight, RotateCw, Home, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export function AddressBar() {
-    const { tabs, activeTabId, updateTab } = useBrowserState();
+    const { tabs, activeTabId, updateTab, goBack, goForward } = useBrowserState();
     const activeTab = tabs.find((tab) => tab.id === activeTabId);
     const [inputValue, setInputValue] = useState(activeTab?.url || "");
+
+    // Update input value when active tab changes or its URL changes
+    useEffect(() => {
+        if (activeTab) {
+            setInputValue(activeTab.url);
+        }
+    }, [activeTab?.url, activeTab?.id]);
 
     const handleNavigate = () => {
         if (!activeTabId || !inputValue.trim()) return;
@@ -17,7 +24,6 @@ export function AddressBar() {
         let url = inputValue.trim();
 
         // Check if it's a URL, if not prepend https://
-        // No search engine fallback
         if (!url.startsWith("http")) {
             url = `https://${url}`;
         }
@@ -40,14 +46,18 @@ export function AddressBar() {
         }, 100);
     };
 
+    const canGoBack = activeTab ? activeTab.currentIndex > 0 : false;
+    const canGoForward = activeTab ? activeTab.currentIndex < (activeTab.history?.length || 0) - 1 : false;
+
     return (
-        <div className="flex items-center gap-2 px-4 py-2 bg-[var(--browser-chrome-bg)]">
+        <div className="flex items-center gap-2 px-4 py-2 bg-[var(--browser-chrome-bg)] sticky top-0 z-50 shadow-sm border-b border-border">
             <div className="flex items-center gap-1">
                 <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-foreground/60 hover:text-foreground hover:bg-[var(--browser-chrome-hover)]"
-                    disabled
+                    disabled={!canGoBack}
+                    onClick={goBack}
                 >
                     <ArrowLeft className="w-4 h-4" />
                 </Button>
@@ -55,7 +65,8 @@ export function AddressBar() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-foreground/60 hover:text-foreground hover:bg-[var(--browser-chrome-hover)]"
-                    disabled
+                    disabled={!canGoForward}
+                    onClick={goForward}
                 >
                     <ArrowRight className="w-4 h-4" />
                 </Button>

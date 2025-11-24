@@ -17,7 +17,7 @@ export function ContentFrame() {
         const handleLoad = () => {
             updateTab(activeTabId, { loading: false });
 
-            // Try to get page title
+            // Try to get page title (will likely fail with corsproxy.io due to cross-origin)
             try {
                 const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
                 if (iframeDoc?.title) {
@@ -25,10 +25,9 @@ export function ContentFrame() {
                 }
             } catch (e) {
                 // Cross-origin restriction - can't access title
-                console.log("Cannot access iframe content due to CORS");
             }
 
-            // Apply page darkening if enabled
+            // Apply page darkening if enabled (will likely fail with corsproxy.io)
             if (settings.pageDarkeningEnabled) {
                 try {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -45,7 +44,7 @@ export function ContentFrame() {
                         iframeDoc.head.appendChild(style);
                     }
                 } catch (e) {
-                    console.log("Cannot apply page darkening due to CORS");
+                    // Cross-origin restriction
                 }
             }
         };
@@ -58,12 +57,15 @@ export function ContentFrame() {
         return null;
     }
 
+    // Use corsproxy.io as requested
+    // Note: This simply proxies the request. It does not rewrite links in the HTML.
+    // Navigation within the iframe will try to go directly to the target URL.
     const proxyUrl = activeTab.url
-        ? `/api/proxy?url=${encodeURIComponent(activeTab.url)}`
+        ? `https://corsproxy.io/?${encodeURIComponent(activeTab.url)}`
         : "";
 
     return (
-        <div className="flex-1 relative bg-background">
+        <div className="flex-1 relative bg-background w-full h-full overflow-hidden">
             {activeTab.loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -74,8 +76,9 @@ export function ContentFrame() {
                     ref={iframeRef}
                     src={proxyUrl}
                     className="w-full h-full border-0"
-                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
+                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-presentation allow-pointer-lock"
                     title={activeTab.title}
+                    allowFullScreen
                 />
             ) : (
                 <div className="w-full h-full" />

@@ -7,8 +7,8 @@ import { ContentFrame } from "./content-frame";
 
 export function BrowserChrome() {
     return (
-        <div className="flex flex-col h-screen">
-            <div className="browser-chrome">
+        <div className="flex flex-col h-screen w-screen overflow-hidden">
+            <div className="browser-chrome sticky top-0 z-50 bg-[var(--browser-chrome-bg)] border-b border-border">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">
                         <TabBar />

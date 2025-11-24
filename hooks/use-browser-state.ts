@@ -8,6 +8,8 @@ export interface Tab {
     url: string;
     title: string;
     loading: boolean;
+    history: string[];
+    currentIndex: number;
 }
 
 export interface BrowserSettings {
@@ -27,13 +29,17 @@ interface BrowserState {
     setActiveTab: (id: string) => void;
     updateTab: (id: string, updates: Partial<Tab>) => void;
 
+    // Navigation
+    goBack: () => void;
+    goForward: () => void;
+
     // Settings actions
     updateSettings: (settings: Partial<BrowserSettings>) => void;
 }
 
 export const useBrowserState = create<BrowserState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             tabs: [],
             activeTabId: null,
             settings: {
@@ -49,6 +55,8 @@ export const useBrowserState = create<BrowserState>()(
                         url,
                         title: url || "New Tab",
                         loading: false,
+                        history: url ? [url] : [],
+                        currentIndex: url ? 0 : -1,
                     };
                     return {
                         tabs: [...state.tabs, newTab],
@@ -84,10 +92,54 @@ export const useBrowserState = create<BrowserState>()(
 
             updateTab: (id, updates) =>
                 set((state) => ({
-                    tabs: state.tabs.map((tab) =>
-                        tab.id === id ? { ...tab, ...updates } : tab
-                    ),
+                    tabs: state.tabs.map((tab) => {
+                        if (tab.id !== id) return tab;
+
+                        // Handle URL updates for history
+                        if (updates.url && updates.url !== tab.url) {
+                            const newHistory = tab.history.slice(0, tab.currentIndex + 1);
+                            newHistory.push(updates.url);
+                            return {
+                                ...tab,
+                                ...updates,
+                                history: newHistory,
+                                currentIndex: newHistory.length - 1,
+                            };
+                        }
+
+                        return { ...tab, ...updates };
+                    }),
                 })),
+
+            goBack: () =>
+                set((state) => {
+                    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+                    if (!tab || tab.currentIndex <= 0) return state;
+
+                    const newIndex = tab.currentIndex - 1;
+                    return {
+                        tabs: state.tabs.map((t) =>
+                            t.id === tab.id
+                                ? { ...t, url: t.history[newIndex], currentIndex: newIndex }
+                                : t
+                        ),
+                    };
+                }),
+
+            goForward: () =>
+                set((state) => {
+                    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+                    if (!tab || tab.currentIndex >= tab.history.length - 1) return state;
+
+                    const newIndex = tab.currentIndex + 1;
+                    return {
+                        tabs: state.tabs.map((t) =>
+                            t.id === tab.id
+                                ? { ...t, url: t.history[newIndex], currentIndex: newIndex }
+                                : t
+                        ),
+                    };
+                }),
 
             updateSettings: (settings) =>
                 set((state) => ({
