@@ -53,37 +53,18 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // Prepare headers for the upstream request
-        const headers = new Headers();
+        // Use corsproxy.io to fetch the content
+        const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
-        // Forward relevant headers from the client
-        const clientHeaders = request.headers;
-        if (clientHeaders.has("cookie")) {
-            headers.set("Cookie", clientHeaders.get("cookie")!);
-        }
-
-        // Set standard browser headers to avoid bot detection
-        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
-        headers.set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8");
-        headers.set("Accept-Language", "en-US,en;q=0.9");
-        headers.set("Referer", urlObj.origin); // Set Referer to the target origin
-        headers.set("Origin", urlObj.origin);
-        headers.set("Cache-Control", "no-cache");
-        headers.set("Pragma", "no-cache");
-        headers.set("Upgrade-Insecure-Requests", "1");
-        headers.set("Sec-Fetch-Dest", "document");
-        headers.set("Sec-Fetch-Mode", "navigate");
-        headers.set("Sec-Fetch-Site", "cross-site");
-        headers.set("Sec-Fetch-User", "?1");
-
-        // Fetch the target URL
-        const response = await fetch(targetUrl, {
-            headers,
+        // Fetch via corsproxy.io
+        const response = await fetch(corsProxyUrl, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            },
             redirect: "follow",
         });
 
         if (!response.ok) {
-            // Forward error responses too, as they might contain useful info
             console.log(`Upstream error: ${response.status} for ${targetUrl}`);
         }
 
@@ -114,16 +95,12 @@ export async function GET(request: NextRequest) {
 
         // Explicitly set permissive security headers
         responseHeaders.set("Access-Control-Allow-Origin", "*");
-        responseHeaders.set("X-Frame-Options", "SAMEORIGIN"); // Allow framing by self
+        responseHeaders.set("X-Frame-Options", "SAMEORIGIN");
         responseHeaders.set("Content-Security-Policy", "frame-ancestors 'self'");
 
-        // Rewrite Set-Cookie headers
-        // Note: node-fetch/nextjs might merge multiple Set-Cookie headers. 
-        // Handling this perfectly in Next.js Edge/Node runtime can be tricky.
+        // Handle cookies if present
         const setCookie = response.headers.get("set-cookie");
         if (setCookie) {
-            // Simple rewrite: strip Domain and Secure to allow localhost
-            // This is a basic implementation and might not handle all edge cases
             const rewrittenCookie = setCookie
                 .replace(/Domain=[^;]+;/gi, "")
                 .replace(/Secure/gi, "")

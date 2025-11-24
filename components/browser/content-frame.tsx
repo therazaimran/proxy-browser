@@ -17,17 +17,17 @@ export function ContentFrame() {
         const handleLoad = () => {
             updateTab(activeTabId, { loading: false });
 
-            // Try to get page title (will likely fail with corsproxy.io due to cross-origin)
+            // Try to get page title
             try {
                 const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
                 if (iframeDoc?.title) {
                     updateTab(activeTabId, { title: iframeDoc.title });
                 }
             } catch (e) {
-                // Cross-origin restriction - can't access title
+                // Cross-origin restriction
             }
 
-            // Apply page darkening if enabled (will likely fail with corsproxy.io)
+            // Apply page darkening if enabled
             if (settings.pageDarkeningEnabled) {
                 try {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
@@ -57,11 +57,9 @@ export function ContentFrame() {
         return null;
     }
 
-    // Use corsproxy.io as requested
-    // Note: This simply proxies the request. It does not rewrite links in the HTML.
-    // Navigation within the iframe will try to go directly to the target URL.
+    // Use our backend proxy which fetches via corsproxy.io
     const proxyUrl = activeTab.url
-        ? `https://corsproxy.io/?${encodeURIComponent(activeTab.url)}`
+        ? `/api/proxy?url=${encodeURIComponent(activeTab.url)}`
         : "";
 
     return (
