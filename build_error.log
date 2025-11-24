@@ -1,0 +1,27 @@
+
+> proxy-browser@0.1.0 build
+> next build
+
+   Ôû▓ Next.js 16.0.4 (Turbopack)
+
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully in 4.2s
+   Running TypeScript ...
+   Collecting page data using 5 workers ...
+   Generating static pages using 5 workers (0/5) ...
+   Generating static pages using 5 workers (1/5) 
+   Generating static pages using 5 workers (2/5) 
+   Generating static pages using 5 workers (3/5) 
+ Ô£ô Generating static pages using 5 workers (5/5) in 825.4ms
+   Finalizing page optimization ...
+
+Route (app)
+Ôöî Ôùï /
+Ôö£ Ôùï /_not-found
+Ôö£ ãÆ /api/proxy
+Ôöö Ôùï /settings
+
+
+Ôùï  (Static)   prerendered as static content
+ãÆ  (Dynamic)  server-rendered on demand
+

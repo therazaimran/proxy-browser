@@ -1,0 +1,70 @@
+
+> proxy-browser@0.1.0 build
+> next build
+
+   Ôû▓ Next.js 16.0.4 (Turbopack)
+
+   Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 2 errors:
+./components/ui/dropdown-menu.tsx:4:1
+Module not found: Can't resolve '@radix-ui/react-dropdown-menu'
+  2 |
+  3 | import * as React from "react"
+> 4 | import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 | import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
+  6 |
+  7 | import { cn } from "@/lib/utils"
+
+
+
+Import traces:
+  Client Component Browser:
+    ./components/ui/dropdown-menu.tsx [Client Component Browser]
+    ./components/browser/browser-menu.tsx [Client Component Browser]
+    ./components/browser/browser-chrome.tsx [Client Component Browser]
+    ./app/page.tsx [Client Component Browser]
+    ./app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./components/ui/dropdown-menu.tsx [Client Component SSR]
+    ./components/browser/browser-menu.tsx [Client Component SSR]
+    ./components/browser/browser-chrome.tsx [Client Component SSR]
+    ./app/page.tsx [Client Component SSR]
+    ./app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+./components/ui/separator.tsx:4:1
+Module not found: Can't resolve '@radix-ui/react-separator'
+  2 |
+  3 | import * as React from "react"
+> 4 | import * as SeparatorPrimitive from "@radix-ui/react-separator"
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5 |
+  6 | import { cn } from "@/lib/utils"
+  7 |
+
+
+
+Import traces:
+  Client Component Browser:
+    ./components/ui/separator.tsx [Client Component Browser]
+    ./app/settings/page.tsx [Client Component Browser]
+    ./app/settings/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./components/ui/separator.tsx [Client Component SSR]
+    ./app/settings/page.tsx [Client Component SSR]
+    ./app/settings/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./components/ui/dropdown-menu.tsx:4:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+    at <unknown> (./components/ui/separator.tsx:4:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
