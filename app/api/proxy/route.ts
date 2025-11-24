@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rewriteHtml, rewriteCss } from "@/lib/proxy/url-rewriter";
+import { decodeProxyUrl } from "@/lib/proxy/url-encoder";
 import { filterHtml, shouldBlockUrl } from "@/lib/proxy/content-filter";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Headers to strip from the upstream response
+// Headers to strip from the upstream response (for anonymity)
 const BLOCKED_HEADERS = [
     "x-frame-options",
     "content-security-policy",
@@ -13,6 +14,8 @@ const BLOCKED_HEADERS = [
     "x-xss-protection",
     "strict-transport-security",
     "access-control-allow-origin",
+    "x-powered-by",
+    "server",
 ];
 
 // Headers to forward from client to upstream
@@ -20,18 +23,29 @@ const FORWARD_HEADERS = [
     "accept",
     "accept-language",
     "accept-encoding",
-    "cache-control",
-    "pragma",
 ];
 
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const targetUrl = searchParams.get("url");
+
+        // Support both encoded (p) and plain (url) parameters for backward compatibility
+        const encodedUrl = searchParams.get("p");
+        const plainUrl = searchParams.get("url");
+
+        let targetUrl: string | null = null;
+
+        if (encodedUrl) {
+            // Decode the obfuscated URL (Startpage-style)
+            targetUrl = decodeProxyUrl(encodedUrl);
+        } else if (plainUrl) {
+            // Fallback to plain URL
+            targetUrl = plainUrl;
+        }
 
         if (!targetUrl) {
             return NextResponse.json(
-                { error: "URL parameter is required" },
+                { error: "Invalid or missing URL parameter" },
                 { status: 400 }
             );
         }
@@ -63,9 +77,10 @@ export async function GET(request: NextRequest) {
         }
 
         // Prepare headers for the upstream request
+        // IMPORTANT: We don't forward user's IP or identifying headers (anonymity)
         const headers = new Headers();
 
-        // Forward relevant headers from the client
+        // Only forward safe headers
         FORWARD_HEADERS.forEach(headerName => {
             const value = request.headers.get(headerName);
             if (value) {
@@ -73,23 +88,18 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        // Forward cookies
-        const clientCookies = request.headers.get("cookie");
-        if (clientCookies) {
-            headers.set("Cookie", clientCookies);
-        }
+        // DO NOT forward cookies from client to maintain anonymity
+        // Each proxied site gets its own isolated session
 
-        // Set standard browser headers to avoid bot detection
+        // Set generic browser headers (not user-specific)
         headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
         headers.set("Referer", urlObj.origin);
-        headers.set("Origin", urlObj.origin);
         headers.set("Sec-Fetch-Dest", "document");
         headers.set("Sec-Fetch-Mode", "navigate");
-        headers.set("Sec-Fetch-Site", "cross-site");
-        headers.set("Sec-Fetch-User", "?1");
+        headers.set("Sec-Fetch-Site", "none");
         headers.set("Upgrade-Insecure-Requests", "1");
 
-        // Fetch the target URL
+        // Fetch the target URL (proxy server fetches, not user)
         const response = await fetch(targetUrl, {
             headers,
             redirect: "follow",
@@ -114,7 +124,7 @@ export async function GET(request: NextRequest) {
                 html = filterHtml(html);
             }
 
-            // Rewrite URLs to route through proxy
+            // Rewrite ALL URLs to route through proxy (complete isolation)
             html = rewriteHtml(html, targetUrl);
             body = html;
         } else if (isCss) {
@@ -123,7 +133,7 @@ export async function GET(request: NextRequest) {
             css = rewriteCss(css, targetUrl);
             body = css;
         } else if (isJavaScript) {
-            // For JavaScript, we pass it through but could add URL rewriting here too
+            // Pass through JavaScript (could add URL rewriting here too)
             body = await response.text();
         } else {
             // Binary content (images, fonts, etc.)
@@ -133,29 +143,24 @@ export async function GET(request: NextRequest) {
         // Prepare response headers
         const responseHeaders = new Headers();
 
-        // Copy headers from upstream, excluding blocked ones
+        // Copy safe headers from upstream, excluding identifying ones
         response.headers.forEach((value, key) => {
             if (!BLOCKED_HEADERS.includes(key.toLowerCase())) {
                 responseHeaders.set(key, value);
             }
         });
 
-        // Explicitly set permissive security headers
+        // Set permissive security headers
         responseHeaders.set("Access-Control-Allow-Origin", "*");
         responseHeaders.set("X-Frame-Options", "SAMEORIGIN");
         responseHeaders.set("Content-Security-Policy", "frame-ancestors 'self'");
 
-        // Handle cookies - rewrite domain to work with our proxy
-        const setCookieHeaders = response.headers.get("set-cookie");
-        if (setCookieHeaders) {
-            // Simple cookie rewriting - remove Domain and Secure attributes
-            const rewrittenCookie = setCookieHeaders
-                .replace(/Domain=[^;]+;?/gi, "")
-                .replace(/Secure;?/gi, "")
-                .replace(/SameSite=None;?/gi, "SameSite=Lax;");
+        // Remove any identifying headers
+        responseHeaders.delete("X-Powered-By");
+        responseHeaders.delete("Server");
 
-            responseHeaders.set("Set-Cookie", rewrittenCookie);
-        }
+        // DO NOT forward Set-Cookie to maintain session isolation
+        // Each visit is completely anonymous and stateless
 
         return new NextResponse(body, {
             status: response.status,
@@ -175,11 +180,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const targetUrl = searchParams.get("url");
+
+        const encodedUrl = searchParams.get("p");
+        const plainUrl = searchParams.get("url");
+
+        let targetUrl: string | null = null;
+
+        if (encodedUrl) {
+            targetUrl = decodeProxyUrl(encodedUrl);
+        } else if (plainUrl) {
+            targetUrl = plainUrl;
+        }
 
         if (!targetUrl) {
             return NextResponse.json(
-                { error: "URL parameter is required" },
+                { error: "Invalid or missing URL parameter" },
                 { status: 400 }
             );
         }
@@ -187,19 +202,12 @@ export async function POST(request: NextRequest) {
         // Get the request body
         const body = await request.arrayBuffer();
 
-        // Prepare headers
+        // Prepare headers (anonymous)
         const headers = new Headers();
 
-        // Forward content-type and other relevant headers
         const contentType = request.headers.get("content-type");
         if (contentType) {
             headers.set("Content-Type", contentType);
-        }
-
-        // Forward cookies
-        const clientCookies = request.headers.get("cookie");
-        if (clientCookies) {
-            headers.set("Cookie", clientCookies);
         }
 
         headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
