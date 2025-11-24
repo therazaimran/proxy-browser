@@ -1,6 +1,6 @@
 {
   "functions": {
-    "api/proxy": {
+    "app/api/proxy/route": {
       "maxDuration": 60
     }
   }
