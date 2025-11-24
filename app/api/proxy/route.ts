@@ -22,7 +22,7 @@ const BLOCKED_HEADERS = [
 const FORWARD_HEADERS = [
     "accept",
     "accept-language",
-    "accept-encoding",
+    // Removed "accept-encoding" - let fetch handle compression automatically
 ];
 
 export async function GET(request: NextRequest) {
