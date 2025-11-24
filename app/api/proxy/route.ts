@@ -16,6 +16,7 @@ const BLOCKED_HEADERS = [
     "access-control-allow-origin",
     "x-powered-by",
     "server",
+    "content-encoding", // Remove this - fetch decompresses, but we don't want to tell browser it's compressed
 ];
 
 // Headers to forward from client to upstream
@@ -244,3 +245,4 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+
